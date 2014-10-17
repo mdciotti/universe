@@ -1,0 +1,138 @@
+
+.gui {
+	background-color: #333333;
+	color: #cccccc;
+	flex: 0 0 256px;
+	display: flex;
+	order: 2;
+	flex-direction: column;
+	font-family: 'Segoe UI';
+	font-size: 10pt;
+	cursor: default;
+	user-select: none;
+	-moz-user-select: none;
+	-webkit-user-select: none;
+	overflow-x: hidden;
+	overflow-y: auto;
+	position: relative;
+	line-height: 1;
+}
+
+.gui .bin {
+	flex: 0 0 auto;
+}
+
+.gui .bin .bin-container.bin-text {
+	padding: 8px;
+}
+.gui .bin .bin-container.bin-text h1 {
+	font-size: 16pt;
+	font-weight: 600;
+	margin: 0;
+}
+.gui .bin .bin-container.bin-text p {
+	font-size: 10pt;
+	margin: 8px 0 0 0;
+	line-height: 1.5;
+	hyphens: auto;
+}
+.gui .bin .bin-container.bin-text small {
+	color: #888888;
+}
+
+.gui .bin .bin-title-bar {
+	background-color: #444444;
+	padding: 6px 8px;
+	text-transform: uppercase;
+	font-size: 8pt;
+	letter-spacing: 0.5pt;
+	position: relative;
+	display: block;
+	outline: none;
+}
+.gui .bin .bin-title-bar::-webkit-details-marker {
+	opacity: 0.5;
+}
+.gui .bin .bin-title-bar:focus {
+	background-color: #777777;
+}
+
+.gui .bin .bin-container {
+	background-color: #333333;
+}
+
+.gui .bin .bin-container.bin-grid {
+	/*padding: 1px;*/
+	display: flex;
+	flex-wrap: wrap;
+}
+
+.gui .bin .bin-container.bin-grid .bin-item {
+	background-color: #555555;
+	height: 48px;
+	width: 48px;
+	/*margin: 1px;*/
+	flex: 0 0 auto;
+	position: relative;
+}
+.gui .bin .bin-container.bin-grid .bin-item:hover {
+	background-color: #666666;
+}
+.gui .bin .bin-container.bin-grid .bin-item:active {
+	background-color: #008ccd;
+}
+.gui .bin .bin-container.bin-grid .bin-item.selected {
+	background-color: #00aced;
+}
+.gui .bin .bin-container.bin-grid .bin-item.disabled {
+	/*background-color: #333333;*/
+	color: #888888;
+}
+.gui .bin .bin-container.bin-grid .bin-item i {
+	font-style: normal;
+	display: block;
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	height: 32px;
+	width: 32px;
+	text-align: center;
+	font-size: 32px;
+	margin: auto;
+}
+
+.gui .bin .bin-container.bin-list .bin-item:not(:first-child) {
+	margin-top: 1px;
+}
+.gui .bin .bin-container.bin-list .bin-item .controller {
+	display: block;
+	height: 32px;
+	display: flex;
+}
+.gui .bin .bin-container.bin-list .bin-item .controller .bin-item-name {
+	display: block;
+	flex: 1 1 60%;
+	padding: 6px 8px;
+}
+.gui .bin .bin-container input[type="text"],
+.gui .bin .bin-container input[type="number"],
+.gui .bin .bin-container select {
+	appearance: none;
+	border: none;
+	background: #555555;
+	display: block;
+	float: right;
+	color: inherit;
+	font-family: inherit;
+	padding: 6px 8px;
+	flex: 1 1 40%;
+	margin: 0;
+	box-sizing: border-box;
+	outline: none;
+}
+.gui .bin .bin-container input:focus,
+.gui .bin .bin-container select:focus {
+	background-color: #777777;
+}
