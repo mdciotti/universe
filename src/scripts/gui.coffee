@@ -46,7 +46,7 @@ class Gui
 		@node = document.createElement "DIV"
 		@node.classList.add "gui"
 
-		container.appendChild @node
+		# container.appendChild @node
 
 	@::node = null
 	@::bins = []
