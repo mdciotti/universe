@@ -4,6 +4,7 @@
 class Entity
 
 	constructor: (x, y, vx, vy) ->
+		@name = "Generic Entity"
 		@position = new Vec2(x, y)
 		@lastPosition = new Vec2(x - vx, y - vy)
 		@velocity = new Vec2(vx, vy)
@@ -13,6 +14,8 @@ class Entity
 		@angularAcceleration = 0
 		@radius = 10
 		@ignoreCollisions = false
+		@willDelete = false
+		@color = "rgba(255,255,255,0.5)"
 
 	remove: () ->
 		# @entities.splice @entities.indexOf(@), 1
@@ -37,7 +40,7 @@ class Entity
 		@ignoreCollisions = true
 		@
 
-class Star extends Entity
+class Body extends Entity
 	constructor: (x, y, @mass, vx, vy, @fixed = false) ->
 		super x, y, vx, vy
 		@type = "star"
@@ -46,6 +49,11 @@ class Star extends Entity
 		@restitution = 1
 		@radius = Math.sqrt @mass
 		@strength = 0
+		@color = "rgba(255,255,0,1)"
+
+	setMass: (m) ->
+		@mass = m
+		@radius = Math.sqrt @mass
 
 	explode: (velocity, n, spreadAngle, ent) =>
 		n ?= 2
@@ -64,7 +72,7 @@ class Star extends Entity
 
 		for i in [1..n]
 			iv = new Vec2().setPolar(vimag, refAngle + i * increment)
-			s = new Star(@position.x, @position.y, imass, iv.x, iv.y, false).disableCollisions()
+			s = new Body(@position.x, @position.y, imass, iv.x, iv.y, false).disableCollisions()
 			ent.push s
 			window.setTimeout s.enableCollisions, t
 		
@@ -82,7 +90,7 @@ class Universe
 
 	@::clock = new Clock()
 
-	@::gui = new Gui(_container)
+	@::gui = null
 
 	@::tools =
 		"select":
@@ -109,6 +117,7 @@ class Universe
 			lastTool: "create"
 		# keyboard:
 
+	createMass = 100
 
 	@::events =
 		contextmenu: (e) =>
@@ -132,13 +141,17 @@ class Universe
 			@input.mouse.x = e.layerX
 			@input.mouse.y = e.layerY
 
+		mousewheel: (e) ->
+			@input.mouse.wheel = e.wheelDelta
+			createMass = Math.max(10, createMass + e.wheelDelta / 10)
+
 		mouseup: (e) ->
 			@input.mouse.isDown = false
 			@input.mouse.dx = e.layerX - @input.mouse.dragStartX
 			@input.mouse.dy = e.layerY - @input.mouse.dragStartY
 			switch @input.mouse.tool
 				when "create"
-					@entities.push new Star(@input.mouse.dragStartX, @input.mouse.dragStartY, 100, @input.mouse.dx / 50, @input.mouse.dy / 50)
+					@entities.push new Body(@input.mouse.dragStartX, @input.mouse.dragStartY, createMass, @input.mouse.dx / 50, @input.mouse.dy / 50)
 				when "select"
 					@selectRegion @input.mouse.dragStartX, @input.mouse.dragStartY, @input.mouse.dx, @input.mouse.dy
 
@@ -147,14 +160,19 @@ class Universe
 		@ctx = settings.context
 		_container = settings.container
 		_container.appendChild @ctx.canvas
+		@gui = new Gui(_container)
+
 		do @events.resize.bind @
 		# _container.style.width = w + "px"
 		# _container.style.height = h + "px"
 
-		@integrator = settings.integrator ? "verlet"
-		@collisions = settings.collisions ? "none"
+		# @integrator = settings.integrator ? "verlet"
+		# @collisions = settings.collisions ? "none"
 		@G = 6.67e-2
 		@totalKineticEnergy = 0
+		@totalPotentialEnergy = 0
+		@totalMomentum = new Vec2(0, 0)
+		@totalHeat = 0
 
 		@options =
 			trail: settings.trail ? false
@@ -179,11 +197,23 @@ class Universe
 		@ctx.canvas.addEventListener "mousedown", @events.mousedown.bind(@), false
 		@ctx.canvas.addEventListener "mousemove", @events.mousemove.bind(@), false
 		@ctx.canvas.addEventListener "mouseup", @events.mouseup.bind(@), false
+		@ctx.canvas.addEventListener "mousewheel", @events.mousewheel.bind(@), false
 
 		# Create GUI
-		infoBin = new Bin("Information")
-		infoBin.addControl
+		infoBin = new Bin("Information", "html")
+		info = new HTMLController()
+		info.setHTML "<h1>&#x269B; Universe Simulator</h1><small>Version 0.0.1</small><p>This is a sandbox for simulating a two-dimensional universe. Play around and see what you can do!</p>"
+		infoBin.addControl info
 		@gui.addBin infoBin
+
+		# toolBin = new Bin("Tools", "grid")
+		# tools = new 
+		propertiesBin = new Bin("Properties", "list");
+		@gui.addBin propertiesBin
+
+		physicsBin = new Bin("Physics", "list");
+		gravity = new ToggleController()
+		@gui.addBin physicsBin
 
 		@setup = settings.setup ? () -> @
 		do @setup
@@ -218,6 +248,10 @@ class Universe
 
 	selectRegion: (x, y, w, h) ->
 		@selectedEntities.length = 0
+		@selectedEntities = []
+
+		if @input.mouse.dx is 0 and @input.mouse.dy is 0
+			return @
 
 		[x, w] = [Math.min(x, w), Math.max(x, w)]
 		[y, h] = [Math.min(y, h), Math.max(y, h)]
@@ -304,13 +338,17 @@ class Universe
 				pos_x = j * sampleSize + offset
 				pos_y = i * sampleSize + offset
 
-				@entities.push new Star(pos_x, pos_y, MAX_MASS * mapData[i][j], 0, 0, false)
+				@entities.push new Body(pos_x, pos_y, MAX_MASS * mapData[i][j], 0, 0, false)
 
 		@
 
 	calculate: () ->
 
 		@totalPotentialEnergy = 0
+		# prevKE = @totalKineticEnergy
+		@totalKineticEnergy = 0
+		@totalMomentum = new Vec2(0, 0)
+		# @totalHeat = 0
 
 		# Calculate accelerations
 		if @options.gravity
@@ -330,11 +368,11 @@ class Universe
 					if !B.fixed
 						B.acceleration.addSelf d.scale(-temp * A.mass)
 
-					@totalPotentialEnergy -= @G * A.mass * B.mass / dist
+					@totalPotentialEnergy -= A.mass * B.mass / dist
 					# @totalPotentialEnergy -= @G * A.mass / dist
 
 		for e in @entities
-			switch @integrator
+			switch @options.integrator
 				when "euler"
 					# Euler Integration
 					e.velocity.addSelf e.acceleration.scale(@clock.dt)
@@ -362,16 +400,22 @@ class Universe
 				else
 					do @stop
 
-			if e instanceof Star
+			if e instanceof Body
 				while e.trailX.length > @options.trailLength then do e.trailX.shift
 				while e.trailY.length > @options.trailLength then do e.trailY.shift
 				e.trailX.push e.position.x
 				e.trailY.push e.position.y
 
+			totalMass = 0
 			if e.hasOwnProperty "mass"
+				totalMass += e.mass
 				@totalKineticEnergy += e.mass * e.velocity.magnitudeSq()
+				@totalMomentum.addSelf e.velocity.scale(e.mass)
 
 		@totalKineticEnergy *= 0.5
+		# Not sure why we need to multiply this by two...
+		# But the conservation of energy mostly works out if we do
+		@totalPotentialEnergy *= @G * 2
 
 		do @collider
 
@@ -379,6 +423,10 @@ class Universe
 
 
 	collider: () ->
+
+		# NOTE: Keep track of which entities to create after this
+		to_create = []
+
 		# for A, iA in @entities
 		@entities.forEach (A, iA) =>
 			
@@ -386,21 +434,26 @@ class Universe
 
 			# Bound points within container
 			if @options.bounded
-				if A.position.x - A.radius < 0 || A.position.x + A.radius > @ctx.canvas.width
-					A.velocity.x *= -1
-				if A.position.y - A.radius < 0 || A.position.y + A.radius > @ctx.canvas.height
-					A.velocity.y *= -1
+				if A.position.x - A.radius <= 0
+					A.velocity.x = A.restitution * Math.abs(A.velocity.x)
+				if A.position.x + A.radius >= @ctx.canvas.width
+					A.velocity.x = -A.restitution * Math.abs(A.velocity.x)
+				if A.position.y - A.radius <= 0
+					A.velocity.y = A.restitution * Math.abs(A.velocity.y)
+				if A.position.y + A.radius >= @ctx.canvas.height
+					A.velocity.y = -A.restitution * Math.abs(A.velocity.y)
 
-			# for B, iB in @points.slice iA+1
+			# for B, iB in @entities.slice iA+1
 			@entities.slice(iA+1).forEach (B, iB) =>
 
 				return if B.ignoreCollisions
 
 				dist = A.position.dist(B.position)
+				dist2 = A.position.distSq(B.position)
 				overlap = A.radius + B.radius - dist
-				absorbtionRate = overlap / 10
+				absorbtionRate = overlap / 5
 
-				if overlap > 0
+				if overlap >= 0
 					# console.log "collision", @collisions
 
 					# Total mass
@@ -420,23 +473,64 @@ class Universe
 							R = A.position.scale(A.mass).add(B.position.scale(B.mass)).scale(M_inverse)
 
 							# Create new star at center of mass
-							@entities.push new Star(R.x, R.y, M, C_velocity.x, C_velocity.y, false)
+							# @entities.push new Body(R.x, R.y, M, C_velocity.x, C_velocity.y, false)
+							to_create.push new Body(R.x, R.y, M, C_velocity.x, C_velocity.y, false)
+							console.log(iA, iB)
 
 							# Remove old points
-							# TODO: sometimes removes incorrect points
-							@entities.splice iA, 1
-							@entities.splice iB, 1
+							A.willDelete = true
+							B.willDelete = true
+
+							# if A.mass > B.mass
+							# 	indices_to_delete.push iB
+							# 	A.position.set(R.x, R.y)
+							# 	A.setMass M
+							# 	A.radius = Math.sqrt(A.mass)
+							# 	A.velocity.set(C_velocity.x, C_velocity.y)
+							# else
+							# 	indices_to_delete.push iA
+							# 	B.position.set(R.x, R.y)
+							# 	B.setMass M
+							# 	B.radius = Math.sqrt(B.mass)
+							# 	B.velocity.set(C_velocity.x, C_velocity.y)
+
+						when "pass"
+							k = 0.5
+							A.velocity = Vec2.add(A.velocity.scale(1.0 - k), B.velocity.scale(k * B.mass / A.mass))
+							B.velocity = Vec2.add(B.velocity.scale(1.0 - k), A.velocity.scale(k * A.mass / B.mass))
 
 						when "absorb"
+							dm = absorbtionRate
+							pA = A.velocity.scale(A.mass)
+							pB = B.velocity.scale(B.mass)
+							mA = A.mass + dm
+							mB = B.mass + dm
+							pA1 = A.velocity.scale(dm)
+							pB1 = B.velocity.scale(dm)
+
 							if A.mass > B.mass
-								B.mass -= absorbtionRate
-								A.mass += absorbtionRate
+								A.velocity.addSelf (pA.add(pB1)).normalizeSelf().scaleSelf(1/mA)
+								B.velocity.addSelf (pA.subtract(pB1)).normalizeSelf().scaleSelf(1/mB)
+								A.setMass A.mass + dm
+								B.setMass B.mass - dm
 							else
-								A.mass -= absorbtionRate
-								B.mass += absorbtionRate
+								A.velocity.addSelf (pB.subtract(pA1)).normalizeSelf().scaleSelf(1/mA)
+								B.velocity.addSelf (pB.add(pA1)).normalizeSelf().scaleSelf(1/mB)
+								A.setMass A.mass - dm
+								B.setMass B.mass + dm
+
+							# dpA = A.velocity.scale(dm)
+							# dpB = B.velocity.scale(-dm)
+
+							if A.mass <= 0
+								A.willDelete = true
+							if B.mass <= 0
+								B.willDelete = true
 
 						when "elastic"
-							# Stars bounce off of each other
+							# Bodies bounce off of each other
+							# TODO: change position rather than velocity?
+							# Or maybe we should apply an impulse?
 
 							un = A.position.subtract(B.position).normalizeSelf()
 							ut = new Vec2(-un.y, un.x)
@@ -447,8 +541,15 @@ class Universe
 							Bvn = M_inverse * (Bvn * (B.mass - A.mass) + 2 * A.mass * Avn)
 							Avn = temp
 
+							# Modify Velocity (does not work with Verlet)
+							# TODO: prevent entities from getting stuck to each other
+							# by setting the velocity to always repel
 							A.velocity = un.scale(Avn).addSelf ut.scale(A.velocity.dot ut)
 							B.velocity = un.scale(Bvn).addSelf ut.scale(B.velocity.dot ut)
+
+							# Impulse method
+							# A.velocity = @clock.dt * 
+							# vr.scale(-(1 + e)).dot(n) / (Am_inv + Bm_inv + ()
 
 						when "shatter"
 							# Like elastic, but stars shatter if change
@@ -491,17 +592,22 @@ class Universe
 							R = A.position.scale(A.mass).add(B.position.scale(B.mass)).scale(M_inverse)
 
 							# Create new star at center of mass
-							s = new Star(R.x, R.y, M, C_velocity.x, C_velocity.y, false)
+							s = new Body(R.x, R.y, M, C_velocity.x, C_velocity.y, false)
 							@entities.push s
 							s.explode(C_velocity, 5, 2 * Math.PI, @entities)
 
 							# Remove old points
-							# TODO: sometimes removes incorrect points
-							@entities.splice @entities.indexOf(A), 1
-							@entities.splice @entities.indexOf(B), 1
+							A.willDelete = true
+							B.willDelete = true
 
 				return
 			return
+		
+		@entities = @entities.filter (e) => !e.willDelete
+
+		for e in to_create
+			@entities.push e
+
 		@
 
 	render: () ->
@@ -521,7 +627,7 @@ class Universe
 			x = e.position.x
 			y = e.position.y
 
-			# Stars
+			@ctx.fillStyle = e.color
 			do @ctx.beginPath
 			@ctx.arc x, y, e.radius, 0, 2 * Math.PI, false
 			do @ctx.closePath
@@ -539,7 +645,7 @@ class Universe
 			do @ctx.fill
 
 			# Trail Vectors
-			if @options.trail and e instanceof Star
+			if @options.trail and e instanceof Body
 				@ctx.strokeWidth = 1
 				@ctx.strokeStyle = "rgba(255,255,255,0.5)"
 				do @ctx.save
@@ -568,9 +674,9 @@ class Universe
 				do @ctx.stroke
 
 		# Mouse drag
-		if @input.mouse.isDown
-			switch @input.mouse.tool
-				when "select"
+		switch @input.mouse.tool
+			when "select"
+				if @input.mouse.isDown
 					# do @ctx.beginPath
 					@ctx.lineDashOffset = (@ctx.lineDashOffset + 0.5) % 10;
 					do @ctx.save
@@ -583,7 +689,14 @@ class Universe
 					@ctx.fillRect @input.mouse.dragStartX, @input.mouse.dragStartY, @input.mouse.dx, @input.mouse.dy
 					do @ctx.restore
 
-				when "create"
+			when "create"
+				x = @input.mouse.x
+				y = @input.mouse.y
+
+				if @input.mouse.isDown
+					x = @input.mouse.dragStartX
+					y = @input.mouse.dragStartY
+
 					v = new Vec2(@input.mouse.dx, @input.mouse.dy)
 					uv = do v.normalize
 					unv = new Vec2(-uv.y, uv.x)
@@ -604,6 +717,11 @@ class Universe
 					@ctx.lineTo Xend, Yend
 					do @ctx.stroke
 
+				@ctx.strokeStyle = "rgba(128,128,128,1)"
+				@ctx.beginPath()
+				@ctx.arc x, y, Math.sqrt(createMass), 0, 2 * Math.PI, false
+				@ctx.stroke()
+
 		if @options.inspector
 			# Global values
 			@ctx.fillStyle = "rgba(255,255,255,0.75)"
@@ -611,8 +729,12 @@ class Universe
 			KE = @totalKineticEnergy.toFixed(2)
 			PE = @totalPotentialEnergy.toFixed(2)
 			TE = (@totalKineticEnergy + @totalPotentialEnergy).toFixed(2)
+			momentum = @totalMomentum.inspect()
 			@ctx.fillText "Kinetic Energy: " + KE, 0, 16
 			@ctx.fillText "Potential Energy: " + PE, 0, 32
 			@ctx.fillText "Total Energy: " + TE, 0, 48
+			@ctx.fillText "Momentum: " + momentum, 0, 64
+			# @ctx.fillText "Heat: " + @totalHeat.toFixed(2), 0, 80
 			# @ctx.fillText "KE-: " + TE, 0, 48
 		@
+# 

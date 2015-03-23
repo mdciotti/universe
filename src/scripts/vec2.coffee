@@ -94,6 +94,9 @@ class Vec2
         @y *= iMag
         @
 
+    inspect: (n = 2) ->
+        "(" + @x.toFixed(n) + ", " + @y.toFixed(n) + ")"
+
 Vec2.add = (a, b) -> new Vec2(a.x + b.x, a.y + b.y)
 Vec2.subtract = (a, b) -> new Vec2(a.x - b.x, a.y - b.y)
 Vec2.scale = (a, k) -> new Vec2(k * a.x, k * a.y)

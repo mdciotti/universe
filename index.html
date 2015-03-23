@@ -14,6 +14,7 @@
 		<script src="js/universe-0.0.0.js"></script>
 		<!--<script src="js/dat.gui.min.js"></script>-->
 		<link rel="stylesheet" href="css/gui.css">
+		<link rel="stylesheet" href="css/ionicons.min.css">
 		<style>
 			body {
 				background: #404040;
@@ -21,7 +22,7 @@
 			}
 			canvas {
 				display: block;
-				flex: 0 0 none;
+				flex: 1 1 auto;
 				/*cursor: crosshair;*/
 			}
 			#container {
@@ -33,36 +34,17 @@
 				margin: auto;
 				display: flex;
 			}
-			/* Details Element Fallback */
-			.no-details details {
-				display: block;
-			}
-			.no-details details > * {
-				display: none;
-			}
-			.no-details details[open] > * {
-				display: block;
-			}
-			.no-details details > summary {
-				display: block;
-			}
-			.no-details details > summary::before {
-				content: '\25B6';
-				color: #888888;
-			}
-			.no-details details[open] > summary::before {
-				content: '\25BC';
-			}
 		</style>
 	</head>
 	<body>
 		<div id="container">
 			<div class="gui">
-				<details class="bin">
+				<details class="bin" open>
 					<summary class="bin-title-bar">
+						<i class="ion-chevron-right"></i>
 						<span class="bin-title">Information</span>
 					</summary>
-					<div class="bin-container bin-text">
+					<div class="bin-container bin-html">
 						<h1>Universe Simulator</h1>
 						<small>Version 0.0.1</small>
 						<p>This is a sandbox for simulating a two-dimensional universe. Play around and see what you can do!</p>
@@ -70,21 +52,23 @@
 				</details>
 				<details class="bin" open>
 					<summary class="bin-title-bar">
+						<i class="ion-chevron-right"></i>
 						<span class="bin-title">Tools</span>
 					</summary>
 					<div class="bin-container bin-grid">
 						<div class="bin-item selected" title="select"><i>S</i></div>
 						<div class="bin-item" title="grab"><i>G</i></div>
-						<div class="bin-item" title="pan"><i>P</i></div>
-						<div class="bin-item" title="zoom"><i>Z</i></div>
+						<div class="bin-item" title="pan"><i class="ion-arrow-move"></i></div>
+						<div class="bin-item" title="zoom"><i class="ion-android-search"></i></div>
 						<div class="bin-item" title=""><i>F</i></div>
-						<div class="bin-item" title="delete"><i>D</i></div>
-						<div class="bin-item" title="create"><i>C</i></div>
-						<div class="bin-item disabled" title="inspect"><i>?</i></div>
+						<div class="bin-item" title="delete"><i class="ion-android-delete"></i></div>
+						<div class="bin-item" title="create"><i class="ion-android-add-circle"></i></div>
+						<div class="bin-item disabled" title="inspect"><i class="ion-help-circled"></i></div>
 					</div>
 				</details>
 				<details class="bin" open>
 					<summary class="bin-title-bar">
+						<i class="ion-chevron-right"></i>
 						<span class="bin-title">Tool Options</span>
 					</summary>
 					<div class="bin-container bin-list">
@@ -92,6 +76,7 @@
 				</details>
 				<details class="bin" open>
 					<summary class="bin-title-bar">
+						<i class="ion-chevron-right"></i>
 						<span class="bin-title">Object Properties</span>
 					</summary>
 					<div class="bin-container bin-list">
@@ -100,6 +85,7 @@
 				</details>
 				<details class="bin" open>
 					<summary class="bin-title-bar">
+						<i class="ion-chevron-right"></i>
 						<span class="bin-title">Physics</span>
 					</summary>
 					<div class="bin-container bin-list">
@@ -130,8 +116,8 @@
 								<span class="bin-item-name">Collision resolution</span>
 								<select class="bin-item-value">
 									<option value="elastic" selected>Elastic</option>
-									<option vlaue="merge">Inelastic (merge)</option>
-									<option vlaue="explode">Explode</option>
+									<option value="merge">Inelastic (merge)</option>
+									<option value="explode">Explode</option>
 								</select>
 							</label>
 						</div>
@@ -139,6 +125,7 @@
 				</details>
 				<details class="bin" open>
 					<summary class="bin-title-bar">
+						<i class="ion-chevron-right"></i>
 						<span class="bin-title">Display Properties</span>
 					</summary>
 					<div class="bin-container bin-list">
@@ -152,13 +139,14 @@
 				</details>
 				<details class="bin" open>
 					<summary class="bin-title-bar">
+						<i class="ion-chevron-right"></i>
 						<span class="bin-title">Time Control</span>
 					</summary>
 					<div class="bin-container bin-grid">
-						<div class="bin-item"><i>&#10073;</i></div>
-						<div class="bin-item"><i>&#9632;</i></div>
-						<div class="bin-item"><i>P</i></div>
-						<div class="bin-item"><i>P</i></div>
+						<div class="bin-item"><i class="ion-ios-rewind-outline"></i></div>
+						<div class="bin-item"><i class="ion-ios-pause-outline"></i></div>
+						<div class="bin-item"><i class="ion-ios-play-outline"></i></div>
+						<div class="bin-item"><i class="ion-ios-fastforward-outline"></i></div>
 					</div>
 					<div></div>
 				</details>
@@ -171,12 +159,18 @@
 			}
 			// Toggle DETAILS "open" attribute on click
 			document.body.addEventListener('click', function (e) {
+				var el;
 				if (e.target.tagName === "SUMMARY") {
-					if (e.target.getAttribute("open") === null) {
-						e.target.setAttribute("open", "");
-					} else {
-						e.target.removeAttribute("open");
-					}
+					el = e.target.parentNode;
+				} else if (e.target.parentNode.tagName === "SUMMARY") {
+					el = e.target.parentNode.parentNode;
+				} else {
+					return;
+				}
+				if (el.getAttribute("open") === null) {
+					el.setAttribute("open", "");
+				} else {
+					el.removeAttribute("open");
 				}
 
 			}, true);
@@ -187,32 +181,32 @@
 				container: document.querySelector("#container"),
 				context: canvas.getContext("2d"),
 				map: "cmb-crop.png",
-				collisions: "merge",
+				collisions: "pass",
 				trail: false,
 				trailLength: 200,
 				trailFade: true,
 				integrator: "euler",
-				bounded: false,
+				bounded: true,
 				friction: 0.01,
-				gravity: true,
+				gravity: false,
 				setup: function () {
 					var w = canvas.width;
 					var h = canvas.height;
 
 					// Basic stable orbits
-					this.entities.push(new Star(w/2, h/2, 1000, 0, 0));
-					this.entities.push(new Star(w/2-100, h/2, 10, 0, 1));
-					// this.entities.push(new Star(w/2+100, h/2, 10, 0, -1));
+					// this.entities.push(new Body(w/2, h/2, 1000, 0, 0));
+					// this.entities.push(new Body(w/2-100, h/2, 10, 0, 1));
+					// this.entities.push(new Body(w/2+100, h/2, 10, 0, -1));
 
-					// this.entities.push(new this.Star(250, 50, 2, 0.75, 0));
-					// this.entities.push(new this.Star(250, 450, 2, -0.75, 0));
-					// this.entities.push(new this.Star(250, 200, 10, 0.2, 0));
-					// this.entities.push(new this.Star(250, 300, 10, -0.2, 0));
+					// this.entities.push(new this.Body(250, 50, 2, 0.75, 0));
+					// this.entities.push(new this.Body(250, 450, 2, -0.75, 0));
+					// this.entities.push(new this.Body(250, 200, 10, 0.2, 0));
+					// this.entities.push(new this.Body(250, 300, 10, -0.2, 0));
 
 					// console.log(this);
 
 					// Asteroids orbiting a star
-					// this.entities.push(new this.Star(250, 250, 100, 0, 0, true));
+					// this.entities.push(new Body(250, 250, 100, 0, 0, true));
 					// for (var i = 0; i < 50; i++) {
 					// 	var angle = Math.random() * 2 * Math.PI;
 					// 	var distance = Math.random() * 50 + 100;
@@ -224,7 +218,7 @@
 					// 	var vx = speed * Math.cos(angle + Math.PI/2);
 					// 	var vy = speed * Math.sin(angle + Math.PI/2);
 
-					// 	this.entities.push(new this.Star(x, y, 0.1, vx, vy));
+					// 	this.entities.push(new Body(x, y, 0.1, vx, vy));
 					// }
 
 					// Generate n-body choreography
@@ -232,7 +226,7 @@
 					// var radius = 100;
 					// // var w = Math.sqrt(2 * Math.PI * Math.pow(radius, 1/3))/1500; // radians per second
 					// var w = 2 * Math.PI / Math.sqrt(30000 * radius);
-					// console.log(w);
+					// // console.log(w);
 
 					// for (var i = 0; i < n; i++) {
 					// 	var angle = i * 2 * Math.PI / n;
@@ -242,13 +236,13 @@
 					// 	var vx = w * radius * Math.cos(angle + Math.PI / 2);
 					// 	var vy = w * radius * Math.sin(angle + Math.PI / 2);
 
-					// 	this.entities.push(new this.Star(x, y, 10, vx, vy));
+					// 	this.entities.push(new Body(x, y, 100, vx, vy));
 					// }
 
 					// slingshot
-					// this.entities.push(new this.Star(100, 100, 30, 0, 0, true));
-					// this.entities.push(new this.Star(200, 100, 30, 0, 0, true));
-					// this.entities.push(new this.Star(150, 300, 10, 0, 0, false));
+					// this.entities.push(new this.Body(100, 100, 30, 0, 0, true));
+					// this.entities.push(new this.Body(200, 100, 30, 0, 0, true));
+					// this.entities.push(new this.Body(150, 300, 10, 0, 0, false));
 
 					// Billiards
 					// var R = 11;
@@ -256,18 +250,18 @@
 					// var y = canvas.height / 3;
 					// for (var row = 0; row < 10; row++) {
 					// 	for (var col = 0; col <= row; col++) {
-					// 		this.entities.push(new Star(x + R * (2 * col - row), y - R * Math.sqrt(3) * row, 100, 0, 0, false));
+					// 		this.entities.push(new Body(x + R * (2 * col - row), y - R * Math.sqrt(3) * row, 100, 0, 0, false));
 					// 	}
 					// }
-					// this.entities.push(new Star(x, canvas.height - y / 2, 100, 0, -1, false));
+					// this.entities.push(new Body(x, canvas.height - y / 2, 100, 0, -1, false));
 
-					//
-					// this.entities.push(new Star(100, 100, 50, 1, 0, false));
-					// this.entities.push(new Star(400, 100, 70, -0.5, 0, false));					
+					
+					this.entities.push(new Body(400, 100, 200, 0, 0, false));
+					this.entities.push(new Body(100, 100, 50, 2, 0, false));
 				}
 			});
 
-			TheUniverse.start();
+			// TheUniverse.start();
 			// TheUniverse.begin();
 
 			/*
@@ -307,13 +301,13 @@
 				return TheUniverse.totalPotentialEnergy;
 			}
 			function getTE() {
-				return TheUniverse.totalPotentialEnergy + TheUniverse.totalKineticEnergy;
+				return TheUniverse.totalPotentialEnergy + TheUniverse.totalKineticEnergy + TheUniverse.totalHeat;
 			}
 
-			var plot1 = new Plot();
-			plot1.addSeries("KE", "#00aced", 20, getKE);
-			plot1.addSeries("PE", "#ed00ac", 20, getPE);
-			plot1.addSeries("TE", "#ededed", 20, getTE);
+			// var plot1 = new Plot();
+			// plot1.addSeries("KE", "#00aced", 20, getKE);
+			// plot1.addSeries("PE", "#ed00ac", 20, getPE);
+			// plot1.addSeries("TE", "#ededed", 20, getTE);
 		</script>
 	</body>
 </html>
